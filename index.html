@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kreuzworträtsel</title>
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: #f0f0f0;
+    color: #000;
+    overflow-x: hidden;
+  }
+
+  body {
+    padding: 20px 12px 60px;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 28px;
+    margin: 0 0 4px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .subtitle {
+    font-size: 12px;
+    color: #666;
+    letter-spacing: 0.05em;
+  }
+
+  /* Grid sizing: fits within viewport, leaves room for LASROZAS panel below */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(14, 1fr);
+    background: #000;
+    border: 2px solid #000;
+    /* Sized to fit width AND not exceed remaining vertical space */
+    width: min(96vw, 95vh - 200px, 900px);
+    aspect-ratio: 1;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  .cell {
+    background: #fff;
+    border: 0.5px solid #000;
+    position: relative;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* Black/blocked cells */
+  .cell.black {
+    background: #000;
+  }
+
+  /* Hint cells (with clue text) */
+  .cell.hint {
+    background: #fff;
+    cursor: pointer;
+    padding: 1px;
+  }
+
+  .cell.hint:hover {
+    background: #f5f5f5;
+  }
+
+  .cell.hint.active {
+    background: #ffe88a;
+  }
+
+  .cell.hint .hint-text {
+    font-size: 5px;
+    line-height: 1.05;
+    text-align: left;
+    padding: 1px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    word-break: break-word;
+    hyphens: auto;
+    color: #000;
+  }
+
+  @media (min-width: 500px) { .cell.hint .hint-text { font-size: 5.5px; } }
+  @media (min-width: 700px) { .cell.hint .hint-text { font-size: 6.5px; } }
+  @media (min-width: 900px) { .cell.hint .hint-text { font-size: 7.5px; line-height: 1.1; } }
+
+  /* Arrow SVG overlay */
+  .arrow-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+    overflow: visible;
+  }
+  .arrow-svg polygon { fill: #000; }
+  .arrow-svg line { stroke: #000; stroke-width: 2; stroke-linecap: round; }
+
+  /* Letter input cells */
+  .cell.input {
+    background: #fff;
+    cursor: text;
+  }
+
+  .cell.input.green {
+    background: #f5d6e0;
+  }
+
+  .cell.input.highlighted {
+    background: #fff7d0;
+  }
+
+  .cell.input.green.highlighted {
+    background: #f0c8d6;
+  }
+
+  .cell.input.active {
+    background: #ffd86b;
+    z-index: 3;
+    outline: 2px solid #000;
+    outline-offset: -2px;
+  }
+
+  .cell.input.green.active {
+    background: #e89bb1;
+  }
+
+  .cell input {
+    all: unset;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    font-family: Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(10px, 2.2vw, 22px);
+    text-transform: uppercase;
+    color: #000;
+    caret-color: transparent;
+  }
+
+  /* LASROZAS green badge */
+  .green-badge {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    font-family: 'Helvetica Neue', sans-serif;
+    font-size: 7px;
+    font-weight: 700;
+    color: #000;
+    line-height: 1;
+    z-index: 1;
+  }
+
+  /* LASROZAS panel */
+  .lasrozas-panel {
+    margin-top: 22px;
+    background: #fff;
+    border: 1.5px solid #000;
+    padding: 14px 20px;
+    width: min(96vw, 600px);
+    text-align: center;
+  }
+  .lasrozas-panel h3 {
+    margin: 0 0 10px;
+    font-family: Georgia, serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .lasrozas-slots {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .slot {
+    width: 32px;
+    height: 38px;
+    background: #fff;
+    border: 1.5px solid #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, serif;
+    font-weight: 700;
+    font-size: 20px;
+    text-transform: uppercase;
+    color: #000;
+    position: relative;
+  }
+  .slot .num {
+    position: absolute;
+    top: -8px;
+    left: -6px;
+    font-family: 'Helvetica Neue', sans-serif;
+    font-size: 9px;
+    background: #000;
+    color: #fff;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+  .slot.filled { background: #f5d6e0; }
+  .slot.all-solved { background: #c44b3f; color: #fff; }
+
+  .celebrate {
+    display: none;
+    margin-top: 12px;
+    padding: 10px;
+    background: #c44b3f;
+    color: #fff;
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 16px;
+    border-radius: 4px;
+  }
+  .celebrate.show { display: block; animation: pop 0.5s ease; }
+  @keyframes pop {
+    0% { transform: scale(0.9); opacity: 0; }
+    60% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Kreuzworträtsel</h1>
+    <div class="subtitle">52 Wörter · 8 rosa Felder ergeben das Lösungswort</div>
+  </header>
+
+  <div id="grid" class="grid"></div>
+
+  <div class="lasrozas-panel">
+    <h3>Lösungswort</h3>
+    <div class="lasrozas-slots" id="lasrozas-slots"></div>
+    <div class="celebrate" id="celebrate">🎉 Gelöst! 🎉</div>
+  </div>
+</div>
+
+<script>
+  const GRID = [
+    ['+','+', 18, 42, 19,'+', 24,'+', 23, 41,  3,'+','+', 50],
+    ['+','+', 20,'P','P', 35,'N','Z', 17,'V','E','G','A','S'],
+    [ 30, 43,'W','O','L','F', 22, 40,'P','R','N', 14,'+','C'],
+    [ 28,'B','U','M', 16,'L','U','J','O', 47,'D','A','C','H'],
+    [ 29,'A','R','M','+','U','+','O', 15,'S','E','D','+','O'],
+    [ 31,'B','M','E', 34,'G','+','J', 26,'U','+','L','+','G'],
+    ['+','I', 33,'S','C','H','L','O','S','S', 49,'I',  4,'G'],
+    [ 27,'E','M', 51,'H','U',  1, 45,  5,'H','E','B','M','I'],
+    [ 32,'S','A','W', 21,'N', 10,'F','R','I',  2, 48,'A',  8],
+    [ 38, 52,'M','A','E','D','E','L','S', 13,'X','C','I','I'],
+    [ 36,'M','A','C', 37,  6,'R','A','G','U',  7,'H','S','V'],
+    ['+','A',  9,'K','R','U','M','M', 12, 25,'E','A','+','+'],
+    ['+','R', 39,'E','E', 44,'E','I','E','R','L','O','C','H'],
+    [ 46,'G','O','L','D', 11,'S','N','A','C','K','S','+','+'],
+  ];
+
+  const ROWS = 14, COLS = 14;
+
+  const HINTS = {
+    1:  { word: 'FRI',      arrow: 'corner-rd-d', text: "Mama's beste Freundin" },
+    2:  { word: 'XCII',     arrow: 'corner-rd-r', text: "Der beste Jahrgang (röm.)" },
+    3:  { word: 'ENDE',     arrow: 'down',     text: "Die Wurst hat 2" },
+    4:  { word: 'MAIS',     arrow: 'down',     text: "Wichtigste im Salat" },
+    5:  { word: 'RSG',      arrow: 'down',     text: "Abk: Rettungsschwim-mer-grundschein" },
+    6:  { word: 'RAGU',     arrow: 'right',    text: "ehemalige Lieblings-pasta-sosse" },
+    7:  { word: 'HSV',      arrow: 'right',    text: "deutscher Fussball-club" },
+    8:  { word: 'IV',       arrow: 'down',     text: "best against hango-vers" },
+    9:  { word: 'KRUMM',    arrow: 'right',    text: "Das sind Bananen" },
+    10: { word: 'ERMES',    arrow: 'down',     text: "Luxusgott ohne H" },
+    11: { word: 'SNACKS',   arrow: 'right',    text: "Keine Reise ohne" },
+    12: { word: 'EA',       arrow: 'down',     text: "FIFA Macher" },
+    13: { word: 'ELK',      arrow: 'down',     text: "A very big deer" },
+    14: { word: 'ADLIB',    arrow: 'down',     text: 'for latin "all you can eat"' },
+    15: { word: 'SED',      arrow: 'right',    text: "Tienes mucho en el club" },
+    16: { word: 'LUJO',     arrow: 'right',    text: "Tus bolsas LV" },
+    17: { word: 'PO',       arrow: 'down',     text: "Dein bestes Stück" },
+    18: { word: 'PP',       arrow: 'corner-rd-r', text: "Spani-sche Partei" },
+    19: { word: 'PL',       arrow: 'down',     text: "Mein neues Auto-kürzel" },
+    20: { word: 'WURM',     arrow: 'down',     text: "Deine Paten-tochter" },
+    21: { word: 'WACKEL',   arrow: 'corner-ld-d', text: "Dein Lieb-lings-kontakt" },
+    22: { word: 'JOJO',     arrow: 'corner-rd-d', text: "Lieb-lings-film ohne Hasen" },
+    23: { word: 'VEGAS',    arrow: 'corner-rd-r', text: "Aus-gangs-ort als Paar" },
+    24: { word: 'NZ',       arrow: 'corner-rd-r', text: "Spani-ens Glo-bus-Gegen-pol" },
+    25: { word: 'RC',       arrow: 'down',     text: "Swiss huma-nitarian" },
+    26: { word: 'SUSHI',    arrow: 'corner-ru-d', text: "liebs-ten flam-biert" },
+    27: { word: 'EM',       arrow: 'right',    text: "Kurz für die EURO" },
+    28: { word: 'BUM',      arrow: 'right',    text: "... ... TAM TAM" },
+    29: { word: 'ARM',      arrow: 'right',    text: "Dart-werf-werk-zeug" },
+    30: { word: 'BABIES',   arrow: 'corner-rd-d', text: "Num-mern 1 & 2" },
+    31: { word: 'BME',      arrow: 'right',    text: "Abk: Bussel mich endlich" },
+    32: { word: 'SAW',      arrow: 'right',    text: "tiger Fami-lien-name" },
+    33: { word: 'MAMA',     arrow: 'down',     text: "Dirndl-Meiste-rin" },
+    34: { word: 'CH',       arrow: 'down',     text: "Roter Pass" },
+    35: { word: 'FLUGHUND', arrow: 'down',     text: "Haus-tier mit Veto" },
+    36: { word: 'MAC',      arrow: 'right',    text: "work without it" },
+    37: { word: 'RED',      arrow: 'down',     text: "Anti gato volador" },
+    38: { word: 'MARG',     arrow: 'corner-rd-d', text: "gatos casi como" },
+    39: { word: 'EE',       arrow: 'right',    text: "Auto-kürzel (hint: Skype)" },
+    40: { word: 'PRN',      arrow: 'right',    text: 'Abbrev. "Please Rob No"' },
+    41: { word: 'VR',       arrow: 'down',     text: "Reali-tät (abbrev., engl.)" },
+    42: { word: 'POMMES',   arrow: 'down',     text: "Isst und bist du" },
+    43: { word: 'WOLF',     arrow: 'right',    text: "n's Lieb-lings-..." },
+    44: { word: 'EIERLOCH', arrow: 'right',    text: "Kann Karla nicht fangen" },
+    45: { word: 'FLAMIN',   arrow: 'down',     text: "animal, but without" },
+    46: { word: 'GOLD',     arrow: 'right',    text: "ck gibt's nur" },
+    47: { word: 'DACH',     arrow: 'right',    text: "Dein Pass-Trio" },
+    48: { word: 'CHAOS',    arrow: 'down',     text: "Brauchst du im Zuhause" },
+    49: { word: 'HEBMI',    arrow: 'corner-ld-r', text: "vom Züri Open-air" },
+    50: { word: 'SCHOGGI',  arrow: 'down',     text: "Dini dägli-chi Dosis" },
+    51: { word: 'SCHLOSS',  arrow: 'corner-ru-r', text: "Dort fing al-les an" },
+    52: { word: 'MAEDELS',  arrow: 'right',    text: '"Deine" Liebs-ten' },
+  };
+
+  // LASROZAS green cells
+  const LASROZAS = [
+    { pos: 1, r: 6,  c: 6,  letter: 'L' },
+    { pos: 2, r: 1,  c: 12, letter: 'A' },
+    { pos: 3, r: 4,  c: 9,  letter: 'S' },
+    { pos: 4, r: 10, c: 6,  letter: 'R' },
+    { pos: 5, r: 4,  c: 13, letter: 'O' },
+    { pos: 6, r: 1,  c: 7,  letter: 'Z' },
+    { pos: 7, r: 9,  c: 3,  letter: 'A' },
+    { pos: 8, r: 13, c: 11, letter: 'S' },
+  ];
+  const greenMap = {};
+  LASROZAS.forEach(g => greenMap[g.r+','+g.c] = g);
+
+  function isLetter(v) { return typeof v === 'string' && v.length === 1 && /[A-Z]/.test(v); }
+  function cellKey(r, c) { return r + ',' + c; }
+
+  // Find all words
+  const words = [];
+  let wid = 0;
+  for (let r = 0; r < ROWS; r++) {
+    let c = 0;
+    while (c < COLS) {
+      if (!isLetter(GRID[r][c])) { c++; continue; }
+      const start = c;
+      while (c < COLS && isLetter(GRID[r][c])) c++;
+      if (c - start >= 2) {
+        const cells = [];
+        for (let cc = start; cc < c; cc++) cells.push({r, c: cc});
+        words.push({ id: wid++, word: cells.map(x => GRID[x.r][x.c]).join(''), direction: 'H', cells });
+      }
+    }
+  }
+  for (let c = 0; c < COLS; c++) {
+    let r = 0;
+    while (r < ROWS) {
+      if (!isLetter(GRID[r][c])) { r++; continue; }
+      const start = r;
+      while (r < ROWS && isLetter(GRID[r][c])) r++;
+      if (r - start >= 2) {
+        const cells = [];
+        for (let rr = start; rr < r; rr++) cells.push({r: rr, c});
+        words.push({ id: wid++, word: cells.map(x => GRID[x.r][x.c]).join(''), direction: 'V', cells });
+      }
+    }
+  }
+
+  function findWordForHint(hintNum) {
+    const h = HINTS[hintNum];
+    const candidates = words.filter(w => w.word === h.word);
+    if (candidates.length === 1) return candidates[0];
+    if (h.word === 'EA') return candidates.find(w => w.direction === 'V') || candidates[0];
+    return candidates[0];
+  }
+
+  const hintInfo = {};
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const v = GRID[r][c];
+      if (typeof v === 'number') {
+        const h = HINTS[v];
+        if (h) {
+          hintInfo[v] = { r, c, word: h.word, wordObj: findWordForHint(v), text: h.text };
+        }
+      }
+    }
+  }
+
+  const state = {};
+  words.forEach(w => w.cells.forEach(cell => {
+    const key = cellKey(cell.r, cell.c);
+    if (!(key in state)) state[key] = '';
+  }));
+
+  let activeWordId = null;
+  let activeCell = null;
+
+  const gridEl = document.getElementById('grid');
+
+  /* SVG arrow generator
+   * Coordinate system: cell is 100x100 (viewBox).
+   * 
+   * Arrow types:
+   * - 'right'        : black triangle ▶ at the right edge (mid-height)
+   * - 'down'         : black triangle ▼ at the bottom edge (mid-width)
+   * - 'corner-rd-r'  : diagonal line from inner cell to bottom-right corner, then triangle ▶
+   *                    (word starts at cell to the right of cell-below, going right)
+   * - 'corner-rd-d'  : diagonal line from inner cell to bottom-right corner, then triangle ▼
+   *                    (word starts at cell down-right, going down)
+   * - 'corner-ld-d'  : diagonal line from inner cell to bottom-left corner, then triangle ▼
+   *                    (word starts at cell to the left going down — for WACKEL)
+   * - 'corner-ld-r'  : diagonal line from inner cell to bottom-left corner, then triangle ▶
+   *                    (word starts at cell down-left, going right — for HEBMI)
+   * - 'corner-ru-r'  : diagonal line from inner cell to top-right corner, then triangle ▶
+   *                    (word starts at cell up-right, going right — for SCHLOSS)
+   * - 'corner-ru-d'  : diagonal line from inner cell to top-right corner, then triangle ▼
+   *                    (word starts at cell up-right, going down — for SUSHI)
+   */
+  function arrowSVG(type) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.setAttribute('class', 'arrow-svg');
+    svg.setAttribute('preserveAspectRatio', 'none');
+
+    function line(x1, y1, x2, y2) {
+      const ln = document.createElementNS(ns, 'line');
+      ln.setAttribute('x1', x1); ln.setAttribute('y1', y1);
+      ln.setAttribute('x2', x2); ln.setAttribute('y2', y2);
+      svg.appendChild(ln);
+    }
+    // Triangle pointing in given direction at (x,y). Size s.
+    function triangle(x, y, dir, s) {
+      const tri = document.createElementNS(ns, 'polygon');
+      let pts;
+      switch(dir) {
+        case 'R': pts = `${x},${y} ${x-s*1.2},${y-s*0.7} ${x-s*1.2},${y+s*0.7}`; break;
+        case 'L': pts = `${x},${y} ${x+s*1.2},${y-s*0.7} ${x+s*1.2},${y+s*0.7}`; break;
+        case 'D': pts = `${x},${y} ${x-s*0.7},${y-s*1.2} ${x+s*0.7},${y-s*1.2}`; break;
+        case 'U': pts = `${x},${y} ${x-s*0.7},${y+s*1.2} ${x+s*0.7},${y+s*1.2}`; break;
+      }
+      tri.setAttribute('points', pts);
+      svg.appendChild(tri);
+    }
+
+    const TS = 9;  // triangle size
+
+    switch (type) {
+      case 'right':
+        // ▶ at right edge, mid-height — tip touches the edge at x=100
+        triangle(100, 50, 'R', TS);
+        break;
+      case 'down':
+        // ▼ at bottom edge, mid-width
+        triangle(50, 100, 'D', TS);
+        break;
+      case 'corner-rd-r':
+        // Line from middle of cell to bottom-right corner, then triangle pointing right
+        // Triangle just inside the corner pointing right (so it indicates word goes right after diagonal)
+        line(45, 45, 95, 95);
+        triangle(100, 95, 'R', TS);
+        break;
+      case 'corner-rd-d':
+        // Line from middle to bottom-right corner, then triangle pointing down
+        line(45, 45, 95, 95);
+        triangle(95, 100, 'D', TS);
+        break;
+      case 'corner-ld-d':
+        // Line from middle to bottom-left corner, then triangle pointing down
+        line(55, 45, 5, 95);
+        triangle(5, 100, 'D', TS);
+        break;
+      case 'corner-ld-r':
+        // Line from middle to bottom-left corner, then triangle pointing right
+        // (word starts at cell down-left going right)
+        line(55, 45, 5, 95);
+        triangle(10, 95, 'R', TS);
+        break;
+      case 'corner-ru-r':
+        // Line from middle to top-right corner, then triangle pointing right
+        line(45, 55, 95, 5);
+        triangle(100, 5, 'R', TS);
+        break;
+      case 'corner-ru-d':
+        // Line from middle to top-right corner, then triangle pointing down
+        // (word at up-right going down — for SUSHI)
+        line(45, 55, 95, 5);
+        triangle(95, 10, 'D', TS);
+        break;
+      default:
+        triangle(100, 50, 'R', TS);
+    }
+    return svg;
+  }
+
+  function renderGrid() {
+    gridEl.innerHTML = '';
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const v = GRID[r][c];
+        const div = document.createElement('div');
+        div.className = 'cell';
+        div.dataset.r = r;
+        div.dataset.c = c;
+
+        if (v === '+') {
+          div.classList.add('black');
+        } else if (typeof v === 'number') {
+          div.classList.add('hint');
+          div.dataset.hint = v;
+          const info = hintInfo[v];
+          if (info) {
+            const txt = document.createElement('div');
+            txt.className = 'hint-text';
+            txt.textContent = info.text;
+            div.appendChild(txt);
+
+            // Arrow
+            const h = HINTS[v];
+            if (h && h.arrow) {
+              div.appendChild(arrowSVG(h.arrow));
+            }
+
+            div.addEventListener('click', () => {
+              if (info.wordObj) selectWord(info.wordObj.id);
+            });
+          }
+        } else if (isLetter(v)) {
+          div.classList.add('input');
+          if (greenMap[cellKey(r,c)]) {
+            div.classList.add('green');
+            const badge = document.createElement('span');
+            badge.className = 'green-badge';
+            badge.textContent = greenMap[cellKey(r,c)].pos;
+            div.appendChild(badge);
+          }
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.maxLength = 1;
+          input.dataset.r = r;
+          input.dataset.c = c;
+          input.inputMode = 'text';
+          input.autocomplete = 'off';
+          input.autocapitalize = 'characters';
+          input.spellcheck = false;
+          input.value = state[cellKey(r,c)] || '';
+          input.addEventListener('focus', () => handleCellFocus(r, c));
+          input.addEventListener('input', (e) => handleInput(e, r, c));
+          input.addEventListener('keydown', (e) => handleKeydown(e, r, c));
+          input.addEventListener('click', () => {
+            if (activeCell && activeCell.r === r && activeCell.c === c) toggleDirection(r, c);
+          });
+          div.appendChild(input);
+        }
+        gridEl.appendChild(div);
+      }
+    }
+  }
+
+  function handleInput(e, r, c) {
+    let val = e.target.value.toUpperCase().replace(/[^A-ZÄÖÜ]/g, '');
+    val = val.replace('Ä','A').replace('Ö','O').replace('Ü','U');
+    if (val.length > 1) val = val.slice(-1);
+    e.target.value = val;
+    state[cellKey(r,c)] = val;
+    updateLasrozas();
+    if (val) moveToNextCell(r, c);
+  }
+
+  function handleKeydown(e, r, c) {
+    if (e.key === 'Backspace') {
+      if (!e.target.value) { moveToPrevCell(r, c); e.preventDefault(); }
+    } else if (e.key === 'ArrowRight') { e.preventDefault(); moveInDirection(r, c, 0, 1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); moveInDirection(r, c, 0, -1); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); moveInDirection(r, c, 1, 0); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); moveInDirection(r, c, -1, 0); }
+    else if (e.key === 'Tab') { e.preventDefault(); cycleWord(e.shiftKey ? -1 : 1); }
+    else if (e.key === ' ') { e.preventDefault(); toggleDirection(r, c); }
+  }
+
+  function toggleDirection(r, c) {
+    const hw = words.find(w => w.direction === 'H' && w.cells.some(x => x.r === r && x.c === c));
+    const vw = words.find(w => w.direction === 'V' && w.cells.some(x => x.r === r && x.c === c));
+    if (hw && vw) {
+      if (activeWordId === hw.id) selectWord(vw.id, {r, c});
+      else selectWord(hw.id, {r, c});
+    }
+  }
+
+  function handleCellFocus(r, c) {
+    activeCell = {r, c};
+    const hw = words.find(w => w.direction === 'H' && w.cells.some(x => x.r === r && x.c === c));
+    const vw = words.find(w => w.direction === 'V' && w.cells.some(x => x.r === r && x.c === c));
+    let chosen = null;
+    if (activeWordId) {
+      const cur = words.find(w => w.id === activeWordId);
+      if (cur && cur.cells.some(x => x.r === r && x.c === c)) chosen = cur;
+    }
+    if (!chosen) chosen = hw || vw;
+    if (chosen) selectWord(chosen.id, {r, c});
+    else updateHighlights();
+  }
+
+  function selectWord(id, focusCell) {
+    activeWordId = id;
+    const w = words.find(x => x.id === id);
+    if (!w) return;
+    updateHighlights();
+    let target = focusCell || w.cells.find(c => !state[cellKey(c.r, c.c)]) || w.cells[0];
+    const inp = document.querySelector(`input[data-r="${target.r}"][data-c="${target.c}"]`);
+    if (inp) { inp.focus(); inp.select(); activeCell = {r: target.r, c: target.c}; }
+  }
+
+  function updateHighlights() {
+    document.querySelectorAll('.cell').forEach(el => el.classList.remove('active', 'highlighted'));
+    if (activeWordId == null) return;
+    const w = words.find(x => x.id === activeWordId);
+    if (!w) return;
+    w.cells.forEach(cell => {
+      const el = document.querySelector(`.cell.input[data-r="${cell.r}"][data-c="${cell.c}"]`);
+      if (el) el.classList.add('highlighted');
+    });
+    if (activeCell) {
+      const el = document.querySelector(`.cell.input[data-r="${activeCell.r}"][data-c="${activeCell.c}"]`);
+      if (el) el.classList.add('active');
+    }
+    const hint = Object.entries(hintInfo).find(([num, info]) => info.wordObj && info.wordObj.id === w.id);
+    if (hint) {
+      const el = document.querySelector(`.cell.hint[data-r="${hint[1].r}"][data-c="${hint[1].c}"]`);
+      if (el) el.classList.add('active');
+    }
+  }
+
+  function moveToNextCell(r, c) {
+    if (activeWordId == null) return;
+    const w = words.find(x => x.id === activeWordId);
+    const idx = w.cells.findIndex(cell => cell.r === r && cell.c === c);
+    if (idx < 0 || idx >= w.cells.length - 1) return;
+    const next = w.cells[idx + 1];
+    const inp = document.querySelector(`input[data-r="${next.r}"][data-c="${next.c}"]`);
+    if (inp) { inp.focus(); inp.select(); activeCell = {r: next.r, c: next.c}; updateHighlights(); }
+  }
+
+  function moveToPrevCell(r, c) {
+    if (activeWordId == null) return;
+    const w = words.find(x => x.id === activeWordId);
+    const idx = w.cells.findIndex(cell => cell.r === r && cell.c === c);
+    if (idx <= 0) return;
+    const prev = w.cells[idx - 1];
+    const inp = document.querySelector(`input[data-r="${prev.r}"][data-c="${prev.c}"]`);
+    if (inp) { inp.focus(); inp.select(); activeCell = {r: prev.r, c: prev.c}; updateHighlights(); }
+  }
+
+  function moveInDirection(r, c, dr, dc) {
+    let nr = r + dr, nc = c + dc;
+    while (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+      if (isLetter(GRID[nr][nc])) {
+        const inp = document.querySelector(`input[data-r="${nr}"][data-c="${nc}"]`);
+        if (inp) { inp.focus(); inp.select(); return; }
+      }
+      nr += dr; nc += dc;
+    }
+  }
+
+  function cycleWord(dir) {
+    if (activeWordId == null) { selectWord(words[0].id); return; }
+    const idx = words.findIndex(w => w.id === activeWordId);
+    const next = (idx + dir + words.length) % words.length;
+    selectWord(words[next].id);
+  }
+
+  function renderLasrozas() {
+    const container = document.getElementById('lasrozas-slots');
+    container.innerHTML = '';
+    LASROZAS.slice().sort((a,b) => a.pos - b.pos).forEach(g => {
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      slot.dataset.pos = g.pos;
+      const num = document.createElement('span');
+      num.className = 'num';
+      num.textContent = g.pos;
+      slot.appendChild(num);
+      const letter = document.createElement('span');
+      letter.className = 'letter';
+      slot.appendChild(letter);
+      container.appendChild(slot);
+    });
+  }
+
+  function updateLasrozas() {
+    let solved = 0;
+    LASROZAS.forEach(g => {
+      const slot = document.querySelector(`.slot[data-pos="${g.pos}"]`);
+      if (!slot) return;
+      const val = state[cellKey(g.r, g.c)] || '';
+      slot.querySelector('.letter').textContent = val;
+      if (val === g.letter) { slot.classList.add('filled'); solved++; }
+      else slot.classList.remove('filled');
+    });
+    if (solved === LASROZAS.length) {
+      document.querySelectorAll('.slot').forEach(s => s.classList.add('all-solved'));
+      document.getElementById('celebrate').classList.add('show');
+    } else {
+      document.querySelectorAll('.slot').forEach(s => s.classList.remove('all-solved'));
+      document.getElementById('celebrate').classList.remove('show');
+    }
+  }
+
+  renderGrid();
+  renderLasrozas();
+  updateLasrozas();
+</script>
+</body>
+</html>
