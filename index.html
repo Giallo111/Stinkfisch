@@ -48,13 +48,11 @@
     letter-spacing: 0.05em;
   }
 
-  /* Grid sizing: fits within viewport, leaves room for LASROZAS panel below */
   .grid {
     display: grid;
     grid-template-columns: repeat(14, 1fr);
     background: #000;
     border: 2px solid #000;
-    /* Sized to fit width AND not exceed remaining vertical space */
     width: min(96vw, 95vh - 200px, 900px);
     aspect-ratio: 1;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
@@ -71,29 +69,19 @@
     overflow: hidden;
   }
 
-  /* Black/blocked cells */
-  .cell.black {
-    background: #000;
-  }
+  .cell.black { background: #000; }
 
-  /* Hint cells (with clue text) */
   .cell.hint {
     background: #fff;
     cursor: pointer;
     padding: 1px;
   }
-
-  .cell.hint:hover {
-    background: #f5f5f5;
-  }
-
-  .cell.hint.active {
-    background: #ffe88a;
-  }
+  .cell.hint:hover { background: #f5f5f5; }
+  .cell.hint.active { background: #ffe88a; }
 
   .cell.hint .hint-text {
-    font-size: 5px;
-    line-height: 1.05;
+    font-size: 3px;
+    line-height: 0.95;
     text-align: left;
     padding: 1px;
     width: 100%;
@@ -107,11 +95,10 @@
     color: #000;
   }
 
-  @media (min-width: 500px) { .cell.hint .hint-text { font-size: 5.5px; } }
-  @media (min-width: 700px) { .cell.hint .hint-text { font-size: 6.5px; } }
-  @media (min-width: 900px) { .cell.hint .hint-text { font-size: 7.5px; line-height: 1.1; } }
+  @media (min-width: 500px) { .cell.hint .hint-text { font-size: 3.5px; } }
+  @media (min-width: 700px) { .cell.hint .hint-text { font-size: 4.5px; } }
+  @media (min-width: 900px) { .cell.hint .hint-text { font-size: 5.5px; line-height: 1.0; } }
 
-  /* Arrow SVG overlay */
   .arrow-svg {
     position: absolute;
     top: 0;
@@ -119,40 +106,26 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
-    z-index: 2;
+    z-index: 4;
     overflow: visible;
   }
   .arrow-svg polygon { fill: #000; }
-  .arrow-svg line { stroke: #000; stroke-width: 2; stroke-linecap: round; }
+  .arrow-svg line { stroke: #000; stroke-width: 2.5; stroke-linecap: square; }
 
-  /* Letter input cells */
   .cell.input {
     background: #fff;
     cursor: text;
   }
-
-  .cell.input.green {
-    background: #f5d6e0;
-  }
-
-  .cell.input.highlighted {
-    background: #fff7d0;
-  }
-
-  .cell.input.green.highlighted {
-    background: #f0c8d6;
-  }
-
+  .cell.input.green { background: #f5d6e0; }
+  .cell.input.highlighted { background: #fff7d0; }
+  .cell.input.green.highlighted { background: #f0c8d6; }
   .cell.input.active {
     background: #ffd86b;
     z-index: 3;
     outline: 2px solid #000;
     outline-offset: -2px;
   }
-
-  .cell.input.green.active {
-    background: #e89bb1;
-  }
+  .cell.input.green.active { background: #e89bb1; }
 
   .cell input {
     all: unset;
@@ -165,9 +138,10 @@
     text-transform: uppercase;
     color: #000;
     caret-color: transparent;
+    position: relative;
+    z-index: 1;
   }
 
-  /* LASROZAS green badge */
   .green-badge {
     position: absolute;
     top: 1px;
@@ -177,10 +151,9 @@
     font-weight: 700;
     color: #000;
     line-height: 1;
-    z-index: 1;
+    z-index: 2;
   }
 
-  /* LASROZAS panel */
   .lasrozas-panel {
     margin-top: 22px;
     background: #fff;
@@ -259,7 +232,7 @@
 <div class="container">
   <header>
     <h1>Kreuzworträtsel</h1>
-    <div class="subtitle">52 Wörter · 8 rosa Felder ergeben das Lösungswort</div>
+    <div class="subtitle">51 Wörter · 8 rosa Felder ergeben das Lösungswort</div>
   </header>
 
   <div id="grid" class="grid"></div>
@@ -272,6 +245,8 @@
 </div>
 
 <script>
+  // GRID: 14x14. '+' = blocked, integer = hint cell number, letter = answer cell.
+  // ELK (#13) was at (9,9) — now '+'  (cell removed)
   const GRID = [
     ['+','+', 18, 42, 19,'+', 24,'+', 23, 41,  3,'+','+', 50],
     ['+','+', 20,'P','P', 35,'N','Z', 17,'V','E','G','A','S'],
@@ -282,7 +257,7 @@
     ['+','I', 33,'S','C','H','L','O','S','S', 49,'I',  4,'G'],
     [ 27,'E','M', 51,'H','U',  1, 45,  5,'H','E','B','M','I'],
     [ 32,'S','A','W', 21,'N', 10,'F','R','I',  2, 48,'A',  8],
-    [ 38, 52,'M','A','E','D','E','L','S', 13,'X','C','I','I'],
+    [ 38, 52,'M','A','E','D','E','L','S','+','X','C','I','I'],
     [ 36,'M','A','C', 37,  6,'R','A','G','U',  7,'H','S','V'],
     ['+','A',  9,'K','R','U','M','M', 12, 25,'E','A','+','+'],
     ['+','R', 39,'E','E', 44,'E','I','E','R','L','O','C','H'],
@@ -292,61 +267,59 @@
   const ROWS = 14, COLS = 14;
 
   const HINTS = {
-    1:  { word: 'FRI',      arrow: 'corner-rd-d', text: "Mama's beste Freundin" },
-    2:  { word: 'XCII',     arrow: 'corner-rd-r', text: "Der beste Jahrgang (röm.)" },
-    3:  { word: 'ENDE',     arrow: 'down',     text: "Die Wurst hat 2" },
-    4:  { word: 'MAIS',     arrow: 'down',     text: "Wichtigste im Salat" },
-    5:  { word: 'RSG',      arrow: 'down',     text: "Abk: Rettungsschwim-mer-grundschein" },
-    6:  { word: 'RAGU',     arrow: 'right',    text: "ehemalige Lieblings-pasta-sosse" },
-    7:  { word: 'HSV',      arrow: 'right',    text: "deutscher Fussball-club" },
-    8:  { word: 'IV',       arrow: 'down',     text: "best against hango-vers" },
-    9:  { word: 'KRUMM',    arrow: 'right',    text: "Das sind Bananen" },
-    10: { word: 'ERMES',    arrow: 'down',     text: "Luxusgott ohne H" },
-    11: { word: 'SNACKS',   arrow: 'right',    text: "Keine Reise ohne" },
-    12: { word: 'EA',       arrow: 'down',     text: "FIFA Macher" },
-    13: { word: 'ELK',      arrow: 'down',     text: "A very big deer" },
-    14: { word: 'ADLIB',    arrow: 'down',     text: 'for latin "all you can eat"' },
-    15: { word: 'SED',      arrow: 'right',    text: "Tienes mucho en el club" },
-    16: { word: 'LUJO',     arrow: 'right',    text: "Tus bolsas LV" },
-    17: { word: 'PO',       arrow: 'down',     text: "Dein bestes Stück" },
-    18: { word: 'PP',       arrow: 'corner-rd-r', text: "Spani-sche Partei" },
-    19: { word: 'PL',       arrow: 'down',     text: "Mein neues Auto-kürzel" },
-    20: { word: 'WURM',     arrow: 'down',     text: "Deine Paten-tochter" },
-    21: { word: 'WACKEL',   arrow: 'corner-ld-d', text: "Dein Lieb-lings-kontakt" },
-    22: { word: 'JOJO',     arrow: 'corner-rd-d', text: "Lieb-lings-film ohne Hasen" },
-    23: { word: 'VEGAS',    arrow: 'corner-rd-r', text: "Aus-gangs-ort als Paar" },
-    24: { word: 'NZ',       arrow: 'corner-rd-r', text: "Spani-ens Glo-bus-Gegen-pol" },
-    25: { word: 'RC',       arrow: 'down',     text: "Swiss huma-nitarian" },
-    26: { word: 'SUSHI',    arrow: 'corner-ru-d', text: "liebs-ten flam-biert" },
-    27: { word: 'EM',       arrow: 'right',    text: "Kurz für die EURO" },
-    28: { word: 'BUM',      arrow: 'right',    text: "... ... TAM TAM" },
-    29: { word: 'ARM',      arrow: 'right',    text: "Dart-werf-werk-zeug" },
-    30: { word: 'BABIES',   arrow: 'corner-rd-d', text: "Num-mern 1 & 2" },
-    31: { word: 'BME',      arrow: 'right',    text: "Abk: Bussel mich endlich" },
-    32: { word: 'SAW',      arrow: 'right',    text: "tiger Fami-lien-name" },
-    33: { word: 'MAMA',     arrow: 'down',     text: "Dirndl-Meiste-rin" },
-    34: { word: 'CH',       arrow: 'down',     text: "Roter Pass" },
-    35: { word: 'FLUGHUND', arrow: 'down',     text: "Haus-tier mit Veto" },
-    36: { word: 'MAC',      arrow: 'right',    text: "work without it" },
-    37: { word: 'RED',      arrow: 'down',     text: "Anti gato volador" },
-    38: { word: 'MARG',     arrow: 'corner-rd-d', text: "gatos casi como" },
-    39: { word: 'EE',       arrow: 'right',    text: "Auto-kürzel (hint: Skype)" },
-    40: { word: 'PRN',      arrow: 'right',    text: 'Abbrev. "Please Rob No"' },
-    41: { word: 'VR',       arrow: 'down',     text: "Reali-tät (abbrev., engl.)" },
-    42: { word: 'POMMES',   arrow: 'down',     text: "Isst und bist du" },
-    43: { word: 'WOLF',     arrow: 'right',    text: "n's Lieb-lings-..." },
-    44: { word: 'EIERLOCH', arrow: 'right',    text: "Kann Karla nicht fangen" },
-    45: { word: 'FLAMIN',   arrow: 'down',     text: "animal, but without" },
-    46: { word: 'GOLD',     arrow: 'right',    text: "ck gibt's nur" },
-    47: { word: 'DACH',     arrow: 'right',    text: "Dein Pass-Trio" },
-    48: { word: 'CHAOS',    arrow: 'down',     text: "Brauchst du im Zuhause" },
-    49: { word: 'HEBMI',    arrow: 'corner-ld-r', text: "vom Züri Open-air" },
-    50: { word: 'SCHOGGI',  arrow: 'down',     text: "Dini dägli-chi Dosis" },
-    51: { word: 'SCHLOSS',  arrow: 'corner-ru-r', text: "Dort fing al-les an" },
-    52: { word: 'MAEDELS',  arrow: 'right',    text: '"Deine" Liebs-ten' },
+    1:  { word: 'FRI',      text: "Mama's beste Freundin" },
+    2:  { word: 'XCII',     text: "Bester Jahrgang (röm.)" },
+    3:  { word: 'ENDE',     text: "Die Wurst hat 2" },
+    4:  { word: 'MAIS',     text: "Wichtigste im Salat" },
+    5:  { word: 'RSG',      text: "Abk: Rettungsschwimmergrundschein" },
+    6:  { word: 'RAGU',     text: "ehemalige Lieblings­pastasosse" },
+    7:  { word: 'HSV',      text: "Norddeutscher Fussballclub" },
+    8:  { word: 'IV',       text: "best against hangovers" },
+    9:  { word: 'KRUMM',    text: "Das sind Bananen" },
+    10: { word: 'ERMES',    text: "Luxusgott ohne H" },
+    11: { word: 'SNACKS',   text: "Keine Reise ohne" },
+    12: { word: 'EA',       text: "FIFA Macher" },
+    14: { word: 'ADLIB',    text: 'Latein für „all you can eat" (Abk)' },
+    15: { word: 'SED',      text: "Tienes mucho en el club" },
+    16: { word: 'LUJO',     text: "Tus bolsas LV" },
+    17: { word: 'PO',       text: "Dein bestes Stück" },
+    18: { word: 'PP',       text: "Spanische Partei" },
+    19: { word: 'PL',       text: "Mein neues Auto­kürzel" },
+    20: { word: 'WURM',     text: "Deine Patentochter" },
+    21: { word: 'WACKEL',   text: "Dein Lieblings­kontakt" },
+    22: { word: 'JOJO',     text: "Lieblingsfilm ohne Hasen" },
+    23: { word: 'VEGAS',    text: "Erster Ausgangsort als Paar" },
+    24: { word: 'NZ',       text: "Spaniens Globus-Gegenpol" },
+    25: { word: 'RC',       text: "Swiss humanitarian org" },
+    26: { word: 'SUSHI',    text: "Am liebsten flambiert" },
+    27: { word: 'EM',       text: "Kurz für die EURO" },
+    28: { word: 'BUM',      text: "... ... TAM TAM" },
+    29: { word: 'ARM',      text: "Dartwerf­werkzeug" },
+    30: { word: 'BABIES',   text: "Nummern 1 & 2" },
+    31: { word: 'BME',      text: "Abk: Bussel mich endlich" },
+    32: { word: 'SAW',      text: "Saimens Lieblingsfilm" },
+    33: { word: 'MAMA',     text: "Dirndl-Meisterin" },
+    34: { word: 'CH',       text: "Roter Pass" },
+    35: { word: 'FLUGHUND', text: "Haustier mit Veto" },
+    36: { word: 'MAC',      text: "Can't work without it" },
+    37: { word: 'RED',      text: "Anti gato volador" },
+    38: { word: 'MARG',     text: "Ama gatos casi como tu (sin I)" },
+    39: { word: 'EE',       text: "Autokürzel (Skype)" },
+    40: { word: 'PRN',      text: 'Abk: Please Rob Noone' },
+    41: { word: 'VR',       text: "Neue Realität (engl.)" },
+    42: { word: 'POMMES',   text: "Isst und bist du" },
+    43: { word: 'WOLF',     text: "Zukünftiger Familienzuwachs" },
+    44: { word: 'EIERLOCH', text: "Kann Karla nicht fangen" },
+    45: { word: 'FLAMIN',   text: "Spirit animal, no movement" },
+    46: { word: 'GOLD',     text: "Schmuck nur daraus" },
+    47: { word: 'DACH',     text: "Dein Pass-Trio" },
+    48: { word: 'CHAOS',    text: "Brauchst du im Zuhause" },
+    49: { word: 'HEBMI',    text: "Zitat Züri Openair" },
+    50: { word: 'SCHOGGI',  text: "Dini däglichi Dosis" },
+    51: { word: 'SCHLOSS',  text: "Dort fing alles an" },
+    52: { word: 'MAEDELS',  text: '„Deine" Liebsten' },
   };
 
-  // LASROZAS green cells
   const LASROZAS = [
     { pos: 1, r: 6,  c: 6,  letter: 'L' },
     { pos: 2, r: 1,  c: 12, letter: 'A' },
@@ -363,7 +336,6 @@
   function isLetter(v) { return typeof v === 'string' && v.length === 1 && /[A-Z]/.test(v); }
   function cellKey(r, c) { return r + ',' + c; }
 
-  // Find all words
   const words = [];
   let wid = 0;
   for (let r = 0; r < ROWS; r++) {
@@ -414,37 +386,25 @@
     }
   }
 
-  const state = {};
-  words.forEach(w => w.cells.forEach(cell => {
-    const key = cellKey(cell.r, cell.c);
-    if (!(key in state)) state[key] = '';
-  }));
+  // For each word-start cell, list arrows pointing to it from hint cells
+  const arrowsByCell = {};
+  Object.entries(hintInfo).forEach(([num, info]) => {
+    if (!info.wordObj) return;
+    const w = info.wordObj;
+    const wr = w.cells[0].r, wc = w.cells[0].c;
+    const dr = wr - info.r;
+    const dc = wc - info.c;
+    const key = cellKey(wr, wc);
+    if (!arrowsByCell[key]) arrowsByCell[key] = [];
+    arrowsByCell[key].push({ dr, dc, wordDir: w.direction, hintNum: +num });
+  });
 
-  let activeWordId = null;
-  let activeCell = null;
-
-  const gridEl = document.getElementById('grid');
-
-  /* SVG arrow generator
-   * Coordinate system: cell is 100x100 (viewBox).
-   * 
-   * Arrow types:
-   * - 'right'        : black triangle ▶ at the right edge (mid-height)
-   * - 'down'         : black triangle ▼ at the bottom edge (mid-width)
-   * - 'corner-rd-r'  : diagonal line from inner cell to bottom-right corner, then triangle ▶
-   *                    (word starts at cell to the right of cell-below, going right)
-   * - 'corner-rd-d'  : diagonal line from inner cell to bottom-right corner, then triangle ▼
-   *                    (word starts at cell down-right, going down)
-   * - 'corner-ld-d'  : diagonal line from inner cell to bottom-left corner, then triangle ▼
-   *                    (word starts at cell to the left going down — for WACKEL)
-   * - 'corner-ld-r'  : diagonal line from inner cell to bottom-left corner, then triangle ▶
-   *                    (word starts at cell down-left, going right — for HEBMI)
-   * - 'corner-ru-r'  : diagonal line from inner cell to top-right corner, then triangle ▶
-   *                    (word starts at cell up-right, going right — for SCHLOSS)
-   * - 'corner-ru-d'  : diagonal line from inner cell to top-right corner, then triangle ▼
-   *                    (word starts at cell up-right, going down — for SUSHI)
+  /* Arrow SVG generator
+   * The arrow lives in the WORD-START CELL (not the hint cell).
+   * (dr, dc) = wordCell − hintCell.
+   * Triangle TIP is at (x, y), pointing in given direction.
    */
-  function arrowSVG(type) {
+  function arrowSVG(dr, dc, wordDir) {
     const ns = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(ns, 'svg');
     svg.setAttribute('viewBox', '0 0 100 100');
@@ -457,7 +417,6 @@
       ln.setAttribute('x2', x2); ln.setAttribute('y2', y2);
       svg.appendChild(ln);
     }
-    // Triangle pointing in given direction at (x,y). Size s.
     function triangle(x, y, dir, s) {
       const tri = document.createElementNS(ns, 'polygon');
       let pts;
@@ -471,55 +430,87 @@
       svg.appendChild(tri);
     }
 
-    const TS = 9;  // triangle size
+    const TS = 12;
 
-    switch (type) {
-      case 'right':
-        // ▶ at right edge, mid-height — tip touches the edge at x=100
-        triangle(100, 50, 'R', TS);
-        break;
-      case 'down':
-        // ▼ at bottom edge, mid-width
-        triangle(50, 100, 'D', TS);
-        break;
-      case 'corner-rd-r':
-        // Line from middle of cell to bottom-right corner, then triangle pointing right
-        // Triangle just inside the corner pointing right (so it indicates word goes right after diagonal)
-        line(45, 45, 95, 95);
-        triangle(100, 95, 'R', TS);
-        break;
-      case 'corner-rd-d':
-        // Line from middle to bottom-right corner, then triangle pointing down
-        line(45, 45, 95, 95);
-        triangle(95, 100, 'D', TS);
-        break;
-      case 'corner-ld-d':
-        // Line from middle to bottom-left corner, then triangle pointing down
-        line(55, 45, 5, 95);
-        triangle(5, 100, 'D', TS);
-        break;
-      case 'corner-ld-r':
-        // Line from middle to bottom-left corner, then triangle pointing right
-        // (word starts at cell down-left going right)
-        line(55, 45, 5, 95);
-        triangle(10, 95, 'R', TS);
-        break;
-      case 'corner-ru-r':
-        // Line from middle to top-right corner, then triangle pointing right
-        line(45, 55, 95, 5);
-        triangle(100, 5, 'R', TS);
-        break;
-      case 'corner-ru-d':
-        // Line from middle to top-right corner, then triangle pointing down
-        // (word at up-right going down — for SUSHI)
-        line(45, 55, 95, 5);
-        triangle(95, 10, 'D', TS);
-        break;
-      default:
-        triangle(100, 50, 'R', TS);
+    // STRAIGHT cases
+    if (dr === 0 && dc === 1) {
+      // Hint to LEFT. Triangle on left edge.
+      triangle(28, 50, wordDir === 'H' ? 'R' : 'D', TS);
+      return svg;
     }
+    if (dr === 1 && dc === 0) {
+      // Hint ABOVE. Triangle on top edge.
+      // Place higher up so it visually links to the hint cell above.
+      triangle(50, 15, wordDir === 'V' ? 'D' : 'R', TS);
+      return svg;
+    }
+    if (dr === 0 && dc === -1) {
+      // Hint to RIGHT (WACKEL). Word goes DOWN.
+      // Small horizontal line in from right edge, then bend down to ▼
+      line(100, 50, 70, 50);
+      line(70, 50, 70, 65);
+      triangle(70, 80, 'D', TS);
+      return svg;
+    }
+    if (dr === -1 && dc === 0) {
+      // Hint BELOW (SCHLOSS). Word goes RIGHT.
+      // Small vertical line up from bottom edge, then bend right to ▶
+      line(50, 100, 50, 70);
+      line(50, 70, 65, 70);
+      triangle(80, 70, 'R', TS);
+      return svg;
+    }
+
+    // DIAGONAL cases — line starts at corner pixel
+    if (dr === 1 && dc === 1) {
+      // Hint above-LEFT. Line from top-left corner (0,0).
+      if (wordDir === 'H') {
+        line(0, 0, 30, 50);
+        triangle(45, 50, 'R', TS);
+      } else {
+        line(0, 0, 50, 60);
+        triangle(50, 80, 'D', TS);
+      }
+      return svg;
+    }
+    if (dr === 1 && dc === -1) {
+      // Hint above-RIGHT (HEBMI). Line from top-right corner (100, 0).
+      line(100, 0, 50, 60);
+      triangle(50, 80, wordDir === 'H' ? 'R' : 'D', TS);
+      return svg;
+    }
+    if (dr === -1 && dc === 1) {
+      // Hint below-LEFT (SUSHI). Line from bottom-left corner (0, 100).
+      if (wordDir === 'V') {
+        line(0, 100, 50, 60);
+        triangle(50, 80, 'D', TS);
+      } else {
+        line(0, 100, 30, 50);
+        triangle(45, 50, 'R', TS);
+      }
+      return svg;
+    }
+    if (dr === -1 && dc === -1) {
+      // Hint below-RIGHT.
+      line(100, 100, 50, 60);
+      triangle(50, 80, wordDir === 'H' ? 'R' : 'D', TS);
+      return svg;
+    }
+
+    // Fallback
+    triangle(28, 50, wordDir === 'H' ? 'R' : 'D', TS);
     return svg;
   }
+
+  const state = {};
+  words.forEach(w => w.cells.forEach(cell => {
+    const key = cellKey(cell.r, cell.c);
+    if (!(key in state)) state[key] = '';
+  }));
+
+  let activeWordId = null;
+  let activeCell = null;
+  const gridEl = document.getElementById('grid');
 
   function renderGrid() {
     gridEl.innerHTML = '';
@@ -542,13 +533,6 @@
             txt.className = 'hint-text';
             txt.textContent = info.text;
             div.appendChild(txt);
-
-            // Arrow
-            const h = HINTS[v];
-            if (h && h.arrow) {
-              div.appendChild(arrowSVG(h.arrow));
-            }
-
             div.addEventListener('click', () => {
               if (info.wordObj) selectWord(info.wordObj.id);
             });
@@ -561,6 +545,11 @@
             badge.className = 'green-badge';
             badge.textContent = greenMap[cellKey(r,c)].pos;
             div.appendChild(badge);
+          }
+          // Draw arrows pointing into this word-start cell
+          const arrows = arrowsByCell[cellKey(r,c)];
+          if (arrows && arrows.length) {
+            arrows.forEach(a => div.appendChild(arrowSVG(a.dr, a.dc, a.wordDir)));
           }
           const input = document.createElement('input');
           input.type = 'text';
